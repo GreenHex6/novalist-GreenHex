@@ -1,0 +1,49 @@
+name: Announce release on Discord
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+    secrets:
+      DISCORD_RELEASE_WEBHOOK_URL:
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published stable release tag (blank uses the latest release)
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Send release notes to Discord
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          TEST_PREVIEW: ${{ github.event_name == 'workflow_dispatch' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="repos/$GITHUB_REPOSITORY/releases/latest"
+          if [ -n "$RELEASE_TAG" ]; then
+            tag=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["RELEASE_TAG"], safe=""))')
+            endpoint="repos/$GITHUB_REPOSITORY/releases/tags/$tag"
+          fi
+          gh api "$endpoint" > "$RUNNER_TEMP/discord-release.json"
+          args=()
+          if [ "$TEST_PREVIEW" = true ]; then args+=(--test); fi
+          python3 tools/discord_release.py "${args[@]}" < "$RUNNER_TEMP/discord-release.json"

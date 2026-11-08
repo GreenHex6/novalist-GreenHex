@@ -844,6 +844,18 @@ jobs:
           path: artifacts/novalist-example-extension.zip
           if-no-files-found: error
 
+  notify-discord:
+    name: Announce stable release
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/tags/ios-') && !contains(github.ref_name, '-')
+    permissions:
+      contents: read
+    uses: ./.github/workflows/discord-release.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets:
+      DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+
   release:
     name: Create release
     # iOS-only tags (ios-v*) go to TestFlight, not to a GitHub release.
