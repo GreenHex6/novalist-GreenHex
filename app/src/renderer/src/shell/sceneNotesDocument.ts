@@ -27,6 +27,7 @@ export class SceneNotesDocument {
   }
 
   async load(): Promise<void> {
+    if (this.dirty) return
     const generation = ++this.generation
     try {
       const text = await this.read()
@@ -40,9 +41,13 @@ export class SceneNotesDocument {
   cancelLoad(): void { this.generation++ }
   dispose(): void { this.cancelLoad() }
   update(text: string): void {
-    if (this.state.loaded) this.change({ text })
+    if (this.state.loaded && text !== this.state.text) {
+      this.generation++
+      this.change({ text })
+    }
   }
   async flush(): Promise<void> {
+    if (!this.state.loaded) return
     if (this.pending) return this.pending
     const run = async (): Promise<void> => {
       this.change({ saving: true })

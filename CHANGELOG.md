@@ -21,7 +21,9 @@ could encounter in a previously released version.
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- Scene synopses retain edits when switching views or closing the app while the field is still focused. Background refreshes no longer replace newer summary text, and failed saves keep the text available for retry.
 
 ---
 

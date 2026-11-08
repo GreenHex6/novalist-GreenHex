@@ -72,6 +72,8 @@ A scene has:
 - **Goal** and **outcome** — what the viewpoint character is trying to get here, and what they are left with. Both are editable in **Inspector → Properties** and as columns in the Manuscript view's outliner. Neither is ever guessed from the prose: conflict can be read out of a scene, but a goal nobody stated and an outcome nobody wrote down are precisely what a draft is missing. Read the two columns down the outliner and a scene where nothing happens says so — the outcome repeats the goal, or there is no outcome at all.
 - **Analysis overrides** — optional manual overrides for detected POV, emotion, intensity, conflict, and tags, used by Smart Lists and the Manuscript outliner.
 
+Synopses save automatically from Properties, the Outliner, and the Corkboard. Pending edits are also saved when you leave the view or close the app. If a save fails, your text stays available and the field offers **Retry**.
+
 ### Relative story time
 
 A scene can say **how long after the previous scene** it happens instead of naming a date: an amount and a unit (minutes, hours, days, weeks) in **Inspector → Properties**.

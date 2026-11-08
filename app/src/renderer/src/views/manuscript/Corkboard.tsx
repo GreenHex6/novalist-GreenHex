@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ScenePresenceBadge } from '../../collaboration/ScenePresenceBadge'
-import { ScenePlanningText } from '../../collaboration/ScenePlanningText'
+import { SceneSynopsisField } from '../../shell/SceneSynopsisField'
 import { useTranslation } from 'react-i18next'
 import { useManuscriptStore } from '../../stores/manuscriptStore'
 import { useStageStore } from '../../stores/stageStore'
@@ -35,7 +35,6 @@ export function Corkboard(): React.JSX.Element {
   const { t } = useTranslation()
   const sections = useManuscriptStore((s) => s.sections)
   const freeform = useManuscriptStore((s) => s.freeform)
-  const setSynopsis = useManuscriptStore((s) => s.setSynopsis)
   const selectedIds = useSelectionStore((s) => s.sceneIds)
   const chapters = useProjectStore((s) => s.chapters)
   const colourBy = useManuscriptStore((s) => s.colourBy)
@@ -110,14 +109,10 @@ export function Corkboard(): React.JSX.Element {
                   <span className="collaboration-scene-title">{scene.title}</span>
                   <ScenePresenceBadge sceneId={scene.sceneId} />
                 </button>
-                <ScenePlanningText sceneId={scene.sceneId} field="synopsis" label={t('sceneNotes.synopsisTitle')} value={scene.synopsis ?? ''} rows={3}><textarea
+                <SceneSynopsisField chapterGuid={section.chapterGuid} sceneId={scene.sceneId} multiline
                   className="corkboard-synopsis"
                   placeholder={t('sceneNotes.synopsisPlaceholder')}
-                  defaultValue={scene.synopsis ?? ''}
-                  onBlur={(e) =>
-                    void setSynopsis(section.chapterGuid, scene.sceneId, e.target.value)
-                  }
-                /></ScenePlanningText>
+                />
                 <div className="corkboard-card-words">
                   {scene.wordCount.toLocaleString()} {t('shell.words')}
                 </div>
@@ -145,7 +140,6 @@ function FreeformCorkboard({
 }): React.JSX.Element {
   const { t } = useTranslation()
   const sections = useManuscriptStore((s) => s.sections)
-  const setSynopsis = useManuscriptStore((s) => s.setSynopsis)
   const selectedIds = useSelectionStore((s) => s.sceneIds)
   const [places, setPlaces] = useState<Record<string, { x: number; y: number }>>({})
   const dragging = useRef<{ sceneId: string; dx: number; dy: number } | null>(null)
@@ -259,12 +253,10 @@ function FreeformCorkboard({
                 <span className="collaboration-scene-title">{scene.title}</span>
                 <ScenePresenceBadge sceneId={scene.sceneId} />
               </button>
-              <ScenePlanningText sceneId={scene.sceneId} field="synopsis" label={t('sceneNotes.synopsisTitle')} value={scene.synopsis ?? ''} rows={3}><textarea
+              <SceneSynopsisField chapterGuid={scene.chapterGuid} sceneId={scene.sceneId} multiline
                 className="corkboard-synopsis"
                 placeholder={t('sceneNotes.synopsisPlaceholder')}
-                defaultValue={scene.synopsis ?? ''}
-                onBlur={(e) => void setSynopsis(scene.chapterGuid, scene.sceneId, e.target.value)}
-              /></ScenePlanningText>
+              />
               <div className="corkboard-card-words">
                 {scene.wordCount.toLocaleString()} {t('shell.words')}
               </div>

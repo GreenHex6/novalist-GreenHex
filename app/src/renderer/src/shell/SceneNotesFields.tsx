@@ -9,9 +9,9 @@ import { metadataBinding, SharedMetadataField } from '../collaboration/SharedMet
 import { useSharedProjectRevision } from '../collaboration/sharedProjectNotifications'
 import type { SharedEntityFields } from '../collaboration/FocusedField'
 import { ScenePlanningText } from '../collaboration/ScenePlanningText'
+import { SceneSynopsisField } from './SceneSynopsisField'
 
 interface SceneMeta {
-  synopsis?: string | null
   sharedFields?: SharedEntityFields
   notes?: string | null
   cast?: string[]
@@ -55,7 +55,6 @@ function useSceneNotes() {
   const [loadedSceneKey, setLoadedSceneKey] = useState<string | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [attempt, setAttempt] = useState(0)
-  const [synopsis, setSynopsis] = useState('')
   const [notes, setNotes] = useState('')
   const [cast, setCast] = useState<string[]>([])
   const [focus, setFocus] = useState<string | null>(null)
@@ -74,8 +73,6 @@ function useSceneNotes() {
     void useManuscriptPropsStore.getState().load()
   }, [revision])
 
-  useEffect(() => { setSynopsis(scene?.synopsis ?? '') }, [openChapterGuid, openSceneId, scene?.synopsis])
-
   useEffect(() => {
     let cancelled = false
     const changingScene = loadedSceneKey !== sceneKey
@@ -86,7 +83,6 @@ function useSceneNotes() {
         .then((meta) => {
           if (cancelled) return
           if (changingScene) {
-            setSynopsis(meta.synopsis ?? '')
             setNotes(meta.notes ?? '')
             setGoal(meta.goal ?? '')
             setOutcome(meta.outcome ?? '')
@@ -104,12 +100,12 @@ function useSceneNotes() {
     return () => { cancelled = true }
   }, [openChapterGuid, openSceneId, sceneKey, attempt, revision])
 
-  return { t, openChapterGuid, openSceneId, scene, sceneKey, loadedSceneKey, loadError, setAttempt, synopsis, setSynopsis, notes, setNotes, cast, setCast, focus, setFocus, mode, setMode, strand, setStrand, goal, setGoal, outcome, setOutcome, relAmount, setRelAmount, relUnit, setRelUnit, sceneValues, sceneProps }
+  return { t, openChapterGuid, openSceneId, scene, sceneKey, loadedSceneKey, loadError, setAttempt, notes, setNotes, cast, setCast, focus, setFocus, mode, setMode, strand, setStrand, goal, setGoal, outcome, setOutcome, relAmount, setRelAmount, relUnit, setRelUnit, sceneValues, sceneProps }
 }
 
 export function SceneNotesFields({ idPrefix = 'dock', includeNotes = true }: { idPrefix?: string; includeNotes?: boolean }): React.JSX.Element {
   const state = useSceneNotes()
-  const { t, openChapterGuid, openSceneId, scene, sceneKey, loadedSceneKey, loadError, setAttempt, synopsis, setSynopsis, notes, setNotes, cast, setCast, focus, setFocus, goal, setGoal, outcome, setOutcome, sceneValues, sceneProps } = state
+  const { t, openChapterGuid, openSceneId, scene, sceneKey, loadedSceneKey, loadError, setAttempt, notes, setNotes, cast, setCast, focus, setFocus, goal, setGoal, outcome, setOutcome, sceneValues, sceneProps } = state
   if (!(openChapterGuid && openSceneId && scene)) {
     return <div className="notes-dock-empty">{t('sceneNotes.empty')}</div>
   }
@@ -124,16 +120,11 @@ export function SceneNotesFields({ idPrefix = 'dock', includeNotes = true }: { i
         <label className="notes-dock-label" htmlFor={`${idPrefix}-synopsis`}>
           {t('sceneNotes.synopsisTitle')}
         </label>
-        <ScenePlanningText sceneId={scene.id} field="synopsis" label={t('sceneNotes.synopsisTitle')} value={synopsis} rows={3}><textarea
+        <SceneSynopsisField chapterGuid={openChapterGuid} sceneId={scene.id} multiline
           id={`${idPrefix}-synopsis`}
           className="notes-dock-textarea notes-dock-synopsis"
           placeholder={t('sceneNotes.synopsisPlaceholder')}
-          value={synopsis}
-          onChange={(e) => setSynopsis(e.target.value)}
-          onBlur={() =>
-            void rpc.request('scenes/setSynopsis', [openChapterGuid, openSceneId, synopsis])
-          }
-        /></ScenePlanningText>
+        />
       </div>
       {includeNotes && <div className="notes-dock-col notes-dock-col-grow">
         <label className="notes-dock-label" htmlFor={`${idPrefix}-notes`}>

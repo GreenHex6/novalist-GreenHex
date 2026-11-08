@@ -15,13 +15,14 @@ function harness() {
   const state = { projectPath: context.projectPath, activeBookId: context.bookId, activeDraftId: context.draftId,
     chapters: [{ guid: 'chapter', scenes: [{ id: 'scene' }] }] }
   const { useSceneNotesDocument } = loadRendererSource('src/shell/useSceneNotesDocument.ts', {
-    react: { useEffect: (effect) => effects.push(effect), useMemo: (create) => create(), useSyncExternalStore: (_subscribe, snapshot) => snapshot() },
+    react: { useEffect: (effect) => effects.push(effect), useMemo: (create) => create(), useRef: current => ({ current }), useSyncExternalStore: (_subscribe, snapshot) => snapshot() },
     '../rpc/client': { rpc: { request: async (method, args) => {
       if (method === 'scenes/getMeta') return { notes: disk }
       if (offline) throw new Error('offline')
       disk = args[2]
     } } },
     '../stores/pendingWrites': pendingWrites,
+    '../stores/sceneSynopsisCache': {},
     '../stores/projectStore': { useProjectStore: Object.assign(select => select(state), { getState: () => state }) },
     './sceneNotesDocument': { SceneNotesDocument },
     './sharedSceneNotesDocument': { SharedSceneNotesDocument },
