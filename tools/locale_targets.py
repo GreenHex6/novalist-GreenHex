@@ -105,7 +105,10 @@ def extension_targets() -> list[Target]:
         for locales in sorted(workspace.rglob("Locales")):
             if not locales.is_dir() or not (locales / "en.json").exists():
                 continue
-            if any(part in {"bin", "obj", "node_modules"} for part in locales.parts):
+            if any(
+                part in {"bin", "obj", "node_modules", "artifacts"}
+                for part in locales.parts
+            ):
                 continue
             # The extension's own project folder: its C# and its web pages both
             # ask for keys, so both are scanned.
