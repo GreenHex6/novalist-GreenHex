@@ -23,6 +23,7 @@ could encounter in a previously released version.
 
 ### Fixed
 
+- The scene notes placement picker no longer opens over Dashboard or Manuscript when a saved dock position is missing, or reappears after cancellation. Choose Notes to set its position again.
 - Scene synopses retain edits when switching views or closing the app while the field is still focused. Background refreshes no longer replace newer summary text, and failed saves keep the text available for retry.
 
 ---

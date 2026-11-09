@@ -407,14 +407,7 @@ export const useShellStore = create<ShellState>((set, get) => ({
   clearPendingSuggestion: () => set({ pendingSuggestion: null }),
   toggleNotesDock: () => {
     blurFocusPanel()
-    if (get().focusMode) {
-      void import('../shell/sceneNotesDocking').then(({ useNotesDocking, floatSceneNotes }) => {
-        if (useNotesDocking.getState().state.docked) void floatSceneNotes()
-        else void window.novalist.toggleSceneNotes?.()
-      })
-      return
-    }
-    void window.novalist.toggleSceneNotes?.()
+    void import('../shell/sceneNotesDocking').then(({ toggleSceneNotes }) => toggleSceneNotes())
   },
   setBackendVersion: (backendVersion) => set({ backendVersion }),
   setShellMetrics: (rawWidth) =>

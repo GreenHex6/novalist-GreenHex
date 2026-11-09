@@ -41,6 +41,20 @@ export function placeSceneNotes(): void {
   useNotesDocking.setState({ placing: true })
 }
 
+export async function toggleSceneNotes(): Promise<void> {
+  if (!placementRestored) {
+    const native = await window.novalist.sceneNotesWindowState?.()
+    if (native?.docked) window.novalist.forwardMainCommand?.('app.toggleSceneNotes')
+    else await window.novalist.toggleSceneNotes?.()
+    return
+  }
+  const { state, transferring } = useNotesDocking.getState()
+  if (transferring) return
+  if (state.docked && useShellStore.getState().focusMode) await floatSceneNotes()
+  else if (state.docked && !hasNotes()) placeSceneNotes()
+  else await window.novalist.toggleSceneNotes?.()
+}
+
 export async function dockSceneNotesAt(targetId: string, edge: DockEdge): Promise<void> {
   if (useNotesDocking.getState().transferring) return
   useNotesDocking.setState({ transferring: true })
@@ -98,7 +112,6 @@ export function useSceneNotesDocking(): void {
       if (!active) return
       useNotesDocking.setState({ state })
       useShellStore.setState({ notesDockVisible: state.visible })
-      if (state.docked && state.visible && !hasNotes() && !useNotesDocking.getState().transferring) placeSceneNotes()
     }
     const stopState = window.novalist.onSceneNotesState?.((state) => { received = true; update(state) })
     void window.novalist.sceneNotesWindowState?.().then((state) => { if (!received) update(state) })
