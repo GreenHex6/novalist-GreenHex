@@ -21,12 +21,6 @@ could encounter in a previously released version.
 
 ## [Unreleased]
 
-Nothing yet.
-
----
-
-## [3.7.1] - 2026-11-09
-
 ### Fixed
 
 - The scene notes placement picker no longer opens over Dashboard or Manuscript when a saved dock position is missing, or reappears after cancellation. Choose Notes to set its position again.
@@ -1881,8 +1875,7 @@ First public release.
 
 ---
 
-[Unreleased]: https://github.com/Drommedhar/novalist-official/compare/v3.7.1...HEAD
-[3.7.1]: https://github.com/Drommedhar/novalist-official/compare/v3.7.0...v3.7.1
+[Unreleased]: https://github.com/Drommedhar/novalist-official/compare/v3.7.0...HEAD
 [3.7.0]: https://github.com/Drommedhar/novalist-official/compare/v3.6.2...v3.7.0
 [3.6.2]: https://github.com/Drommedhar/novalist-official/compare/v3.6.1...v3.6.2
 [3.6.1]: https://github.com/Drommedhar/novalist-official/compare/v3.6.0...v3.6.1
