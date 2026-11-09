@@ -24,7 +24,7 @@ test('Board POV and property drops honor named focus locks and synchronize after
     await owner.rpc('scenes/setPov', [chapter.guid, second.id, 'Morgan'])
     await owner.rpc('manuscriptProps/setDefinitions', [[{ key: 'weather', label: 'Weather', type: 'Enum', scope: 'Scene', enumOptions: ['Fog', 'Sun'], showInOutliner: true }]])
     await owner.rpc('manuscriptProps/setSceneValue', [first.id, 'weather', 'Fog'])
-    await owner.rpc('collaboration/peer/host', ['127.0.0.1', 0, 'Owner'])
+    const { sessionId } = await owner.rpc<{ sessionId: string }>('collaboration/peer/host', ['127.0.0.1', 0, 'Owner'])
     const invitation = await owner.rpc<string>('collaboration/invite', [new Date(Date.now() + 60_000).toISOString()])
     const guest = await launchApp('nl-board-guest-')
     writers.push(guest)
@@ -45,6 +45,10 @@ test('Board POV and property drops honor named focus locks and synchronize after
     const pov = guest.page.locator('.outliner').getByPlaceholder('POV', { exact: true }).first()
     await pov.focus()
     await expect(pov).not.toHaveAttribute('readonly')
+    // Lock acquisition and the presence message carrying the writer's name arrive separately.
+    await expect.poll(() => owner.rpc('collaboration/participants', [sessionId])).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'Guest' })])
+    )
     const card = owner.page.locator('.board-card', { hasText: 'Arrival' })
     const target = owner.page.locator('.board-column').filter({ has: owner.page.locator('.board-column-title', { hasText: 'Morgan' }) })
     await drop(card, target)

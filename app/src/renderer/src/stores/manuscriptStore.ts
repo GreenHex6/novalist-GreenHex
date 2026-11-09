@@ -189,7 +189,6 @@ interface ManuscriptState {
   /** Adopts a conflict resolution and retires the manuscript payload it chose
    *  between, so it cannot be submitted again after the merge. */
   acceptResolvedScene(sceneId: string, html: string, wordCount: number, hash: string): void
-  setSynopsis(chapterGuid: string, sceneId: string, synopsis: string): Promise<void>
   setPov(chapterGuid: string, sceneId: string, pov: string): Promise<void>
   setGoalOutcome(
     chapterGuid: string,
@@ -370,22 +369,6 @@ export const useManuscriptStore = create<ManuscriptState>((set, get) => ({
       }))
     })
     reportManuscriptClaims()
-  },
-
-  setSynopsis: async (chapterGuid, sceneId, synopsis) => {
-    await rpc.request('scenes/setSynopsis', [chapterGuid, sceneId, synopsis])
-    set({
-      sections: get().sections.map((s) =>
-        s.chapterGuid === chapterGuid
-          ? {
-              ...s,
-              scenes: s.scenes.map((sc) =>
-                sc.sceneId === sceneId ? { ...sc, synopsis: synopsis || null } : sc
-              )
-            }
-          : s
-      )
-    })
   },
 
   setPov: async (chapterGuid, sceneId, pov) => {

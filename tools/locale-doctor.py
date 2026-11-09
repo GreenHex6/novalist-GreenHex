@@ -69,7 +69,8 @@ def scan_references(target: Target, en_keys: set[str]) -> set[str]:
             if path.suffix not in target.scan_exts:
                 continue
             if any(
-                p in ("bin", "obj", "node_modules", "dist", "out") for p in path.parts
+                p in ("bin", "obj", "node_modules", "dist", "out", "artifacts")
+                for p in path.parts
             ):
                 continue
             text = path.read_text(encoding="utf-8-sig")

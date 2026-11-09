@@ -180,9 +180,10 @@ test('floating notes route shared checklists through CRDT and retain the live do
     chapters: [{ guid: 'chapter', scenes: [{ id: 'scene', sharedProse: { sessionId: binding.sessionId, fields: { notes: binding.itemId } } }] }] }
   let effects = []
   const { useSceneNotesDocument } = loadRendererSource('src/shell/useSceneNotesDocument.ts', {
-    react: { useEffect: effect => effects.push(effect), useMemo: create => create(), useSyncExternalStore: (_subscribe, snapshot) => snapshot() },
+    react: { useEffect: effect => effects.push(effect), useMemo: create => create(), useRef: current => ({ current }), useSyncExternalStore: (_subscribe, snapshot) => snapshot() },
     '../rpc/client': { rpc: { request: async method => { throw new Error(`Shared notes must not call ${method}`) } } },
     '../stores/pendingWrites': pendingWrites,
+    '../stores/sceneSynopsisCache': {},
     '../stores/projectStore': { useProjectStore: Object.assign(select => select(state), { getState: () => state }) },
     './sceneNotesDocument': { SceneNotesDocument },
     './sharedSceneNotesDocument': { SharedSceneNotesDocument },

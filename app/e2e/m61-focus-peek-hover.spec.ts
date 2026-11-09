@@ -58,6 +58,12 @@ interface PeekState {
 async function wordBox(page: Page, word: string, firstFragment = false): Promise<Box> {
   const editor = page.frameLocator('.editor-frame').locator('#editor')
   await expect(editor.locator(':scope > .nv-page')).toHaveCount(1)
+  // Settings refocus the editor; finish its scroll restore before revealing the word.
+  await expect.poll(() => editor.evaluate(element =>
+    (element.ownerDocument.defaultView as unknown as {
+      NovalistEditorState: { isFocusing: boolean }
+    }).NovalistEditorState.isFocusing
+  )).toBe(false)
   await editor.locator('p').filter({ hasText: word }).first().scrollIntoViewIfNeeded()
   const frame = await page.locator('.editor-frame').boundingBox()
   if (!frame) throw new Error('the editor frame has no box')

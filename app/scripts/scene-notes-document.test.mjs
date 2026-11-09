@@ -61,3 +61,25 @@ test('cancelled loads cannot introduce edits after a workspace has unmounted', a
   assert.equal(doc.state.loaded, false)
   assert.equal(doc.state.text, '')
 })
+
+test('a delayed refresh cannot replace edits made and saved after the read began', async () => {
+  let read = async () => 'Saved summary', release
+  const doc = new SceneNotesDocument(() => read(), async () => {})
+  await doc.load()
+  read = () => new Promise(resolve => { release = resolve })
+  const refreshing = doc.load()
+  doc.update('Newer summary')
+  await doc.flush()
+  release('Older summary')
+  await refreshing
+  assert.equal(doc.state.text, 'Newer summary')
+  assert.equal(doc.dirty, false)
+})
+
+test('flushing an unloaded document preserves its load error for retry', async () => {
+  const doc = new SceneNotesDocument(async () => { throw new Error('Read unavailable') }, async () => {})
+  await doc.load()
+  await doc.flush()
+  assert.equal(doc.state.loaded, false)
+  assert.match(doc.state.error, /Read unavailable/)
+})

@@ -11,6 +11,7 @@ import { metadataBinding, SharedMetadataField } from '../../collaboration/Shared
 import { MetadataInput } from '../../collaboration/MetadataInput'
 import { useSharedProjectRevision } from '../../collaboration/sharedProjectNotifications'
 import { ScenePlanningText } from '../../collaboration/ScenePlanningText'
+import { SceneSynopsisField } from '../../shell/SceneSynopsisField'
 import { LazyBlock } from '../../shell/LazyBlock'
 import { EAGER_SECTIONS } from './ManuscriptFrame'
 
@@ -19,7 +20,6 @@ const OUTLINER_ROW_HEIGHT = 34
 export function Outliner(): React.JSX.Element {
   const { t } = useTranslation()
   const sections = useManuscriptStore((s) => s.sections)
-  const setSynopsis = useManuscriptStore((s) => s.setSynopsis)
   const setPov = useManuscriptStore((s) => s.setPov)
   const setGoalOutcome = useManuscriptStore((s) => s.setGoalOutcome)
   const selectedIds = useSelectionStore((s) => s.sceneIds)
@@ -87,11 +87,9 @@ export function Outliner(): React.JSX.Element {
                 <span className="collaboration-scene-title">{scene.title}</span>
                 <ScenePresenceBadge sceneId={scene.sceneId} />
               </button>
-              <ScenePlanningText sceneId={scene.sceneId} field="synopsis" label={t('sceneNotes.synopsisTitle')} value={scene.synopsis ?? ''}><input
+              <SceneSynopsisField chapterGuid={section.chapterGuid} sceneId={scene.sceneId}
                 className="outliner-input"
-                defaultValue={scene.synopsis ?? ''}
-                onBlur={(e) => void setSynopsis(section.chapterGuid, scene.sceneId, e.target.value)}
-              /></ScenePlanningText>
+              />
               <ScenePlanningText sceneId={scene.sceneId} field="goal" label={t('sceneNotes.goal')} value={scene.goal ?? ''}><input
                 className="outliner-input"
                 defaultValue={scene.goal ?? ''}

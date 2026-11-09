@@ -96,7 +96,7 @@ TS_CALL = re.compile(
 TS_LITERAL = re.compile(rf"""['"]({NAME})['"]""")
 CS_LITERAL = re.compile(rf'"({NAME})"')
 
-SKIP_DIRS = {"obj", "bin", "node_modules", "dist", "out"}
+SKIP_DIRS = {"obj", "bin", "node_modules", "dist", "out", "artifacts"}
 
 
 def walk(root: pathlib.Path, suffixes: tuple[str, ...]) -> list[pathlib.Path]:

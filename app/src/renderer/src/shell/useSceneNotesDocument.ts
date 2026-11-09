@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import type { SceneNotesContext } from '../../../shared/sceneNotesProtocol'
 import { rpc } from '../rpc/client'
 import { registerPendingWrite, retainPendingWrite } from '../stores/pendingWrites'
@@ -7,23 +7,26 @@ import { SceneNotesDocument } from './sceneNotesDocument'
 import { SharedSceneNotesDocument } from './sharedSceneNotesDocument'
 import { openSharedMarkdown } from '../collaboration/sharedMarkdown'
 import { normalizeChecklist } from './sceneChecklist'
+import { cacheSceneSynopsis } from '../stores/sceneSynopsisCache'
 
 // A scene reopened while its last save is pending must rejoin that same
 // document, not load an older disk value and create a competing writer.
 const sessions = new Map<string, { document: SceneNotesDocument | SharedSceneNotesDocument; mounted: number }>()
 
-export function useSceneNotesDocument(context: SceneNotesContext) {
+export function useSceneNotesDocument(context: SceneNotesContext, field: 'notes' | 'synopsis' = 'notes') {
   const { projectPath, bookId, draftId, chapterGuid, sceneId } = context
+  const synopsis = useProjectStore(state => state.chapters.find(chapter => chapter.guid === chapterGuid)?.scenes.find(scene => scene.id === sceneId)?.synopsis)
   const prose = useProjectStore(state => state.chapters.find(chapter => chapter.guid === chapterGuid)?.scenes.find(scene => scene.id === sceneId)?.sharedProse)
-  const shared = useMemo(() => prose?.fields.notes ? { sessionId: prose.sessionId, itemId: prose.fields.notes } : undefined,
-    [prose?.sessionId, prose?.fields.notes])
+  const itemId = prose?.fields[field]
+  const shared = useMemo(() => itemId && prose ? { sessionId: prose.sessionId, itemId } : undefined,
+    [prose?.sessionId, itemId])
   // Transport epochs change on recovery; the authored document does not.
-  const key = JSON.stringify(['scene-notes', projectPath, bookId, draftId, chapterGuid, sceneId, shared?.sessionId, shared?.itemId])
+  const key = JSON.stringify([`scene-${field}`, projectPath, bookId, draftId, chapterGuid, sceneId, shared?.sessionId, shared?.itemId])
   const session = useMemo(() => {
     const existing = sessions.get(key)
     if (existing) return existing
     const created = { document: shared ? new SharedSceneNotesDocument(changed => openSharedMarkdown(shared, changed)) : new SceneNotesDocument(
-      async () => (await rpc.request<{ notes: string | null }>('scenes/getMeta', [chapterGuid, sceneId])).notes ?? '',
+      async () => (await rpc.request<{ notes: string | null; synopsis: string | null }>('scenes/getMeta', [chapterGuid, sceneId]))[field] ?? '',
       async (text) => {
         const workspace = useProjectStore.getState()
         if (workspace.projectPath !== projectPath || workspace.activeBookId !== bookId || workspace.activeDraftId !== draftId ||
@@ -32,12 +35,13 @@ export function useSceneNotesDocument(context: SceneNotesContext) {
         }
         // The document serializes its own writes. Retain the live document on
         // unmount, never a second retry queue holding an obsolete text payload.
-        await rpc.request('scenes/setNotes', [chapterGuid, sceneId, text])
+        await rpc.request(field === 'notes' ? 'scenes/setNotes' : 'scenes/setSynopsis', [chapterGuid, sceneId, text])
+        if (field === 'synopsis') cacheSceneSynopsis(context, text)
       }
     ), mounted: 0 }
     sessions.set(key, created)
     return created
-  }, [key, projectPath, bookId, draftId, chapterGuid, sceneId, shared])
+  }, [key, projectPath, bookId, draftId, chapterGuid, sceneId, shared, field])
   const { document } = session
   const state = useSyncExternalStore(document.subscribe, document.snapshot)
 
@@ -45,18 +49,18 @@ export function useSceneNotesDocument(context: SceneNotesContext) {
     session.mounted++
     sessions.set(key, session)
     const stop = registerPendingWrite(() => document.flush())
-    void (document.state.loaded && !shared ? Promise.resolve() : document.load()).then(() => {
+    void (session.mounted > 1 || (document.state.loaded && !shared) ? Promise.resolve() : document.load()).then(() => {
       if (!document.state.loaded) return
       // Merely opening shared notes must not concurrently insert duplicate
       // checkbox markers into another writer's plain Markdown lists.
-      if (!shared) document.update(normalizeChecklist(document.state.text))
+      if (!shared && field === 'notes') document.update(normalizeChecklist(document.state.text))
       void document.flush().catch(() => {})
     })
     return () => {
-      document.cancelLoad()
       session.mounted--
       stop()
       if (session.mounted) return
+      document.cancelLoad()
       // Retain the live document, including debounce-only edits and ambiguous
       // failed acknowledgements. A later edit supersedes its retry payload.
       if (document.dirty) retainPendingWrite(`${key}:surface`, async () => {
@@ -65,7 +69,14 @@ export function useSceneNotesDocument(context: SceneNotesContext) {
       })
       else if (sessions.get(key) === session) { sessions.delete(key); document.dispose() }
     }
-  }, [document, key, session, shared])
+  }, [document, key, session, shared, field])
+
+  const previousSynopsis = useRef(synopsis)
+  useEffect(() => {
+    const changed = previousSynopsis.current !== synopsis
+    previousSynopsis.current = synopsis
+    if (changed && field === 'synopsis' && !shared && document.state.loaded && !document.dirty) void document.load()
+  }, [document, synopsis, field, shared])
 
   useEffect(() => {
     if (!document.dirty) return

@@ -11,7 +11,6 @@ const compile = async (name, suffix = '') => (await transformWithEsbuild(
   `${name}.tsx`, { loader: 'tsx', format: 'cjs', jsxFactory: 'jsx', jsxFragment: 'fragment' }
 )).code
 const linksCode = await compile('LinksPanel')
-const notesCode = await compile('SceneNotesFields', '\nexport { useSceneNotes }\n')
 
 function renderer(code, dependencies) {
   const slots = []
@@ -117,57 +116,3 @@ for (const transition of ['scene', 'unmount', 'book', 'draft']) {
     assert.deepEqual(f.views, [])
   })
 }
-
-function notesFixture() {
-  const state = { openChapterGuid: 'chapter', openSceneId: 'first', chapters: [{ guid: 'chapter', scenes: [
-    { id: 'first', synopsis: '' }, { id: 'second', synopsis: '' }
-  ] }] }
-  const reads = []
-  let revision = 0
-  const props = { definitions: [], sceneValues: {}, load() {} }
-  const f = renderer(notesCode, {
-    'react-i18next': { useTranslation: () => ({ t: key => key }) },
-    '../stores/projectStore': { useProjectStore: select => select(state) },
-    '../stores/manuscriptPropsStore': { useManuscriptPropsStore: Object.assign(select => select(props), { getState: () => props }) },
-    '../collaboration/sharedProjectNotifications': { useSharedProjectRevision: () => revision },
-    '../rpc/client': { rpc: { request: (method, args) => {
-      assert.equal(method, 'scenes/getMeta')
-      return new Promise(resolve => reads.push({ scene: args[1], resolve }))
-    } } },
-    '../collaboration/SharedPropertyField': {}, './SceneCastPicker': {},
-    '../collaboration/SharedMetadataField': {}, '../collaboration/ScenePlanningText': {}
-  })
-  return { state, reads, render: () => f.render('useSceneNotes'), unmount: f.unmount,
-    revise() { revision++ } }
-}
-
-test('reopening scene properties restores saved synopsis from metadata despite a stale scene summary', async () => {
-  const f = notesFixture()
-  f.render()
-  f.reads[0].resolve({ synopsis: 'Saved synopsis', goal: 'Saved goal' }); await turn()
-  assert.equal(f.render().synopsis, 'Saved synopsis')
-  f.state.openSceneId = 'second'; f.render()
-  f.reads[1].resolve({ synopsis: '' }); await turn()
-  assert.equal(f.render().synopsis, '')
-  f.state.openSceneId = 'first'; f.render()
-  f.reads[2].resolve({ synopsis: 'Saved synopsis' }); await turn()
-  assert.equal(f.render().synopsis, 'Saved synopsis')
-})
-
-test('a same-scene metadata refresh preserves newer local synopsis edits', async () => {
-  const f = notesFixture()
-  f.render(); f.reads[0].resolve({ synopsis: 'Saved synopsis' }); await turn()
-  f.render().setSynopsis('New local draft')
-  f.revise(); f.render()
-  f.reads[1].resolve({ synopsis: 'Older snapshot' }); await turn()
-  assert.equal(f.render().synopsis, 'New local draft')
-})
-
-test('metadata from a departed scene cannot replace the current synopsis', async () => {
-  const f = notesFixture()
-  f.render()
-  f.state.openSceneId = 'second'; f.render()
-  f.reads[1].resolve({ synopsis: 'Current scene' }); await turn()
-  f.reads[0].resolve({ synopsis: 'Departed scene' }); await turn()
-  assert.equal(f.render().synopsis, 'Current scene')
-})
