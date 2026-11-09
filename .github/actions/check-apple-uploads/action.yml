@@ -1,0 +1,21 @@
+name: Check previous Apple uploads
+description: Identify platforms without a successful upload of this release version.
+outputs:
+  macos:
+    description: Whether macOS still needs an upload.
+    value: ${{ steps.history.outputs.macos }}
+  ios:
+    description: Whether iOS still needs an upload.
+    value: ${{ steps.history.outputs.ios }}
+runs:
+  using: composite
+  steps:
+    - id: history
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: >-
+        python3 tools/apple_release_uploads.py
+        --repository "$GITHUB_REPOSITORY" --tag "$GITHUB_REF_NAME"
+        --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+        --output "$GITHUB_OUTPUT"

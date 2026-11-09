@@ -20,6 +20,9 @@ jobs:
     name: Require green CI for release commit
     runs-on: ubuntu-latest
     timeout-minutes: 65
+    outputs:
+      upload_macos: ${{ steps.apple.outputs.macos }}
+      upload_ios: ${{ steps.apple.outputs.ios }}
     permissions:
       actions: read
       contents: read
@@ -28,6 +31,10 @@ jobs:
         uses: actions/checkout@v4
       - name: Wait for tested commit
         uses: ./.github/actions/require-green-ci
+      - name: Check previous Apple uploads
+        id: apple
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: ./.github/actions/check-apple-uploads
 
   # Tag routing:
   #   v*      -> desktop, Android alpha APKs, Mac App Store, and iOS
@@ -37,7 +44,7 @@ jobs:
   #              desktop release. The desktop jobs below opt out via !startsWith(ios-).
   # The store jobs are deliberately absent from the `release` job's `needs`, so a
   # failed App Store or TestFlight upload never blocks the GitHub release.
-  # Updating an existing tag rebuilds GitHub assets without resubmitting stores.
+  # Store jobs skip only versions with a recorded successful upload per platform.
   android-alpha:
     name: Android alpha APKs
     needs: require-green-ci
@@ -242,7 +249,7 @@ jobs:
     # Dry-run on manual dispatch: builds and signs the .pkg but skips the App
     # Store Connect upload (that step is tag-only), so you can inspect the pkg
     # artifact without consuming a build number.
-    if: ((github.event_name == 'push' && github.event.created && startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/tags/ios-')) || github.event_name == 'workflow_dispatch') && inputs.ios_only != true
+    if: ((startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/tags/ios-') && needs.require-green-ci.outputs.upload_macos == 'true') || github.event_name == 'workflow_dispatch') && inputs.ios_only != true
     runs-on: macos-latest
     permissions:
       actions: read
@@ -356,9 +363,14 @@ jobs:
           echo "=== dist/mas ==="
           ls -la dist/mas 2>/dev/null || true
 
+      - name: Recheck Apple upload history
+        id: apple_upload
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: ./.github/actions/check-apple-uploads
+
       - name: Upload to App Store Connect
-        # New tags only — resets and manual dry-runs must not resubmit a version.
-        if: github.event_name == 'push' && github.event.created && startsWith(github.ref, 'refs/tags/')
+        # Manual dispatches remain build-only, including when targeting a tag.
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && steps.apple_upload.outputs.macos == 'true'
         working-directory: app
         shell: bash
         env:
@@ -407,7 +419,7 @@ jobs:
     # Every tag, not just ios-v*: a normal v* release now ships iOS alongside the
     # desktop builds off the same tag, so the versions cannot drift. ios-v* still
     # works and still skips the desktop jobs, for a mobile-only ship.
-    if: (github.event_name == 'push' && github.event.created && startsWith(github.ref, 'refs/tags/')) || github.event_name == 'workflow_dispatch'
+    if: (startsWith(github.ref, 'refs/tags/') && needs.require-green-ci.outputs.upload_ios == 'true') || github.event_name == 'workflow_dispatch'
     # macos-latest still carries Xcode 26; iOS 27 needs the dedicated image.
     runs-on: xcode-27
     permissions:
@@ -555,9 +567,14 @@ jobs:
           echo "ipa=$IPA" >> "$GITHUB_ENV"
           echo "Built $IPA"
 
+      - name: Recheck Apple upload history
+        id: apple_upload
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: ./.github/actions/check-apple-uploads
+
       - name: Upload to TestFlight
-        # New tags only — resets and manual dry-runs must not resubmit a version.
-        if: github.event_name == 'push' && github.event.created && startsWith(github.ref, 'refs/tags/')
+        # Manual dispatches remain build-only, including when targeting a tag.
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && steps.apple_upload.outputs.ios == 'true'
         env:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
