@@ -37,6 +37,7 @@ jobs:
   #              desktop release. The desktop jobs below opt out via !startsWith(ios-).
   # The store jobs are deliberately absent from the `release` job's `needs`, so a
   # failed App Store or TestFlight upload never blocks the GitHub release.
+  # Updating an existing tag rebuilds GitHub assets without resubmitting stores.
   android-alpha:
     name: Android alpha APKs
     needs: require-green-ci
@@ -241,7 +242,7 @@ jobs:
     # Dry-run on manual dispatch: builds and signs the .pkg but skips the App
     # Store Connect upload (that step is tag-only), so you can inspect the pkg
     # artifact without consuming a build number.
-    if: ((startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/tags/ios-')) || github.event_name == 'workflow_dispatch') && inputs.ios_only != true
+    if: ((github.event_name == 'push' && github.event.created && startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/tags/ios-')) || github.event_name == 'workflow_dispatch') && inputs.ios_only != true
     runs-on: macos-latest
     permissions:
       actions: read
@@ -356,8 +357,8 @@ jobs:
           ls -la dist/mas 2>/dev/null || true
 
       - name: Upload to App Store Connect
-        # Tag releases only — never upload a build during a manual dry-run.
-        if: startsWith(github.ref, 'refs/tags/')
+        # New tags only — resets and manual dry-runs must not resubmit a version.
+        if: github.event_name == 'push' && github.event.created && startsWith(github.ref, 'refs/tags/')
         working-directory: app
         shell: bash
         env:
@@ -406,7 +407,7 @@ jobs:
     # Every tag, not just ios-v*: a normal v* release now ships iOS alongside the
     # desktop builds off the same tag, so the versions cannot drift. ios-v* still
     # works and still skips the desktop jobs, for a mobile-only ship.
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' && github.event.created && startsWith(github.ref, 'refs/tags/')) || github.event_name == 'workflow_dispatch'
     # macos-latest still carries Xcode 26; iOS 27 needs the dedicated image.
     runs-on: xcode-27
     permissions:
@@ -555,8 +556,8 @@ jobs:
           echo "Built $IPA"
 
       - name: Upload to TestFlight
-        # Tag releases only — a manual dispatch is a build-only dry-run.
-        if: startsWith(github.ref, 'refs/tags/')
+        # New tags only — resets and manual dry-runs must not resubmit a version.
+        if: github.event_name == 'push' && github.event.created && startsWith(github.ref, 'refs/tags/')
         env:
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
