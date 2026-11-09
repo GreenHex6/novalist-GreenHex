@@ -583,14 +583,15 @@ jobs:
   sdk-and-example:
     needs: require-green-ci
     name: Pack SDK & Example Extension
-    # Tag releases only: this job publishes to NuGet and commits a version bump to
-    # the default branch, so it must never run during a manual dry-run. iOS-only
+    # Tag releases only: this job publishes to NuGet and proposes a version bump,
+    # so it must never run during a manual dry-run. iOS-only
     # tags (ios-v*) skip it too.
     if: startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/tags/ios-')
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout
@@ -787,25 +788,6 @@ jobs:
           --source https://api.nuget.org/v3/index.json
           --skip-duplicate
 
-      # ── Update SDK version in csproj ──────────────────────────────
-      - name: Update SDK csproj version
-        if: steps.sdk_check.outputs.sdk_changed == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          NEW_VER="${{ steps.calc_version.outputs.new_sdk_version }}"
-          sed -i "s|<VersionPrefix>.*</VersionPrefix>|<VersionPrefix>${NEW_VER}</VersionPrefix>|" Novalist.Sdk/Novalist.Sdk.csproj
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Novalist.Sdk/Novalist.Sdk.csproj
-          if git diff --cached --quiet; then
-            echo "No version change to commit."
-          else
-            DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')
-            git commit -m "chore(sdk): bump SDK version to ${NEW_VER} [skip ci]"
-            git push origin HEAD:"${DEFAULT_BRANCH}"
-          fi
-
       # ── Build & package Example Extension ─────────────────────────
       - name: Build Example Extension
         run: >-
@@ -844,6 +826,35 @@ jobs:
           path: artifacts/novalist-example-extension.zip
           if-no-files-found: error
 
+      - name: Update SDK csproj version
+        if: steps.sdk_check.outputs.sdk_changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          NEW_VER="${{ steps.calc_version.outputs.new_sdk_version }}"
+          DEFAULT_BRANCH=$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')
+          git fetch origin "$DEFAULT_BRANCH"
+          git checkout -B "$DEFAULT_BRANCH" "origin/$DEFAULT_BRANCH"
+          CURRENT_VER=$(sed -n 's/.*<VersionPrefix>\(.*\)<\/VersionPrefix>.*/\1/p' Novalist.Sdk/Novalist.Sdk.csproj)
+          if [ "$(printf '%s\n' "$CURRENT_VER" "$NEW_VER" | sort -V | tail -n1)" = "$CURRENT_VER" ]; then
+            echo "SDK version $CURRENT_VER is already at or beyond $NEW_VER."
+            exit 0
+          fi
+          sed -i "s|<VersionPrefix>.*</VersionPrefix>|<VersionPrefix>${NEW_VER}</VersionPrefix>|" Novalist.Sdk/Novalist.Sdk.csproj
+
+      - name: Propose SDK version update
+        if: steps.sdk_check.outputs.sdk_changed == 'true'
+        uses: peter-evans/create-pull-request@15733dbdfeedb4f7fdb73d13c6f5ac83b710fab8 # v8
+        with:
+          base: ${{ github.event.repository.default_branch }}
+          branch: automation/sdk-${{ steps.calc_version.outputs.new_sdk_version }}
+          add-paths: Novalist.Sdk/Novalist.Sdk.csproj
+          commit-message: 'chore(sdk): bump SDK version to ${{ steps.calc_version.outputs.new_sdk_version }}'
+          title: 'chore(sdk): bump SDK version to ${{ steps.calc_version.outputs.new_sdk_version }}'
+          body: |
+            Record the SDK version published by release `${{ github.ref_name }}`.
+            Merge this update through the default branch's normal review process.
+
   notify-discord:
     name: Announce stable release
     needs: release
@@ -865,9 +876,10 @@ jobs:
     permissions:
       actions: read
       contents: write
+      pull-requests: write
 
     steps:
-      # Full history for the tag date and the push to the default branch.
+      # Full history for the tag date and the release metadata pull request.
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -977,14 +989,16 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      # Stamp the published section and package version together on the default
-      # branch so external tools can read the latest stable version from either.
-      # [skip ci] keeps this bookkeeping commit from starting another CI run.
+      # Propose the published section and package version together in a pull
+      # request so the default branch's protection rules remain in effect.
       #
       # Stable tags only: a prerelease reads the Unreleased section but must not
       # consume it, so the entries are still there when the real release is cut.
       - name: Stamp the changelog and package version
+        id: metadata
         if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -996,6 +1010,12 @@ jobs:
             echo "Release $VER is already recorded — nothing to stamp."
             exit 0
           fi
+          EXISTING_PR=$(gh pr list --repo "$GITHUB_REPOSITORY" --base "$DEFAULT_BRANCH" \
+            --head "automation/release-$VER" --state open --json url --jq '.[0].url // empty')
+          if [ -n "$EXISTING_PR" ]; then
+            echo "Release metadata is already proposed: $EXISTING_PR"
+            exit 0
+          fi
           python3 tools/changelog.py release \
             --version "$VER" \
             --date "${{ steps.version.outputs.date }}" \
@@ -1005,12 +1025,20 @@ jobs:
           IFS='.' read -r a b c <<< "$VER"
           PACKAGE_VERSION="${a:-0}.${b:-0}.${c:-0}"
           (cd app && npm version "$PACKAGE_VERSION" --no-git-tag-version --allow-same-version --ignore-scripts)
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md app/package.json app/package-lock.json
-          if git diff --cached --quiet; then
-            echo "No release metadata change to commit."
-          else
-            git commit -m "docs(changelog): release ${VER} [skip ci]"
-            git push origin "HEAD:${DEFAULT_BRANCH}"
-          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Propose release metadata update
+        if: ${{ !contains(github.ref_name, '-') && steps.metadata.outputs.changed == 'true' }}
+        uses: peter-evans/create-pull-request@15733dbdfeedb4f7fdb73d13c6f5ac83b710fab8 # v8
+        with:
+          base: ${{ github.event.repository.default_branch }}
+          branch: automation/release-${{ steps.version.outputs.version }}
+          add-paths: |
+            CHANGELOG.md
+            app/package.json
+            app/package-lock.json
+          commit-message: 'docs(changelog): release ${{ steps.version.outputs.version }}'
+          title: 'docs(changelog): release ${{ steps.version.outputs.version }}'
+          body: |
+            Record the changelog and package version for the published release `${{ github.ref_name }}`.
+            Merge this update before the next stable release so its notes start from a fresh Unreleased section.
