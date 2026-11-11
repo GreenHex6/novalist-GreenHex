@@ -21,7 +21,7 @@ could encounter in a previously released version.
 
 ## [Unreleased]
 
-Nothing yet.
+- Added full Arabic (RTL) support, localization, and keyboard shortcut fixes. (by @Ammar-Banna)
 
 ---
 
