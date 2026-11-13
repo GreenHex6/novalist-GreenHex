@@ -8,15 +8,24 @@
   max-height: var(--nl-panel-width-sm);
   overflow: auto;
   min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .entity-reference-list label {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--nl-space-sm);
-  overflow-wrap: anywhere;
+  min-width: 0;
+  width: 100%;
+  overflow-wrap: break-word;
 }
 
+/* Keep the control native-sized even if a parent form rule stretches inputs. */
 .entity-reference-list input {
-  flex-shrink: 0;
+  flex: none;
+  width: auto;
+  min-width: auto;
+  min-height: auto;
+  align-self: center;
 }

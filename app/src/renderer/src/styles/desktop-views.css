@@ -288,7 +288,10 @@
   margin-bottom: var(--nl-space-sm);
   color: var(--nl-text-dim);
 }
-:root[data-shell='desktop'] .codex-field dd :is(input, select) {
+/* Text/select fields fill the column; leave checkboxes/radios at native size so
+   Codex reference lists stay readable rows instead of a full-width control that
+   letter-wraps the name into a one-character column. */
+:root[data-shell='desktop'] .codex-field dd :is(input:not([type='checkbox'], [type='radio']), select) {
   min-height: var(--nl-view-control-height);
   width: 100%;
 }
