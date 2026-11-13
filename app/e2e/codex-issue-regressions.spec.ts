@@ -1,7 +1,21 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { dismissTour, launchApp, resizeWindow, seedBook, selectCodexTab } from './harness'
+
+async function addReference(group: Locator, name: string): Promise<void> {
+  const input = group.getByRole('combobox')
+  await input.click()
+  await group.getByRole('option', { name, exact: true }).click()
+}
+
+async function removeReference(group: Locator, name: string): Promise<void> {
+  await group.getByRole('button', { name: `Delete ${name}`, exact: true }).click()
+}
+
+function referenceChip(group: Locator, name: string): Locator {
+  return group.locator('.entity-chip', { hasText: name })
+}
 
 test('custom entries keep gallery images after leaving and reopening the entry', async () => {
   const h = await launchApp('nl-custom-images-')
@@ -109,9 +123,10 @@ test('custom types support plain multiline text and multiple references through 
     await history.fill('First line.\n**Plain text**, not formatting.')
     await history.press('Tab')
     const members = h.page.getByRole('group', { name: 'Members', exact: true })
-    await expect(members.getByRole('checkbox')).toHaveCount(2)
-    await members.getByRole('checkbox', { name: 'Mira, the Brave', exact: true }).check()
-    await members.getByRole('checkbox', { name: 'Örn', exact: true }).check()
+    await members.getByRole('combobox').click()
+    await expect(members.getByRole('option')).toHaveCount(2)
+    await addReference(members, 'Mira, the Brave')
+    await addReference(members, 'Örn')
     await expect.poll(async () => (await h.rpc<{ fields: Record<string, string> }>('entities/get', ['guild', entry.id])).fields).toEqual({
       History: 'First line.\n**Plain text**, not formatting.', Members: JSON.stringify([first.id, second.id])
     })
@@ -121,8 +136,9 @@ test('custom types support plain multiline text and multiple references through 
       await window.novalistStores.codex.getState().select(id)
     }, entry.id)
     await expect(history).toHaveValue('First line.\n**Plain text**, not formatting.')
-    await expect(members.getByRole('checkbox', { checked: true })).toHaveCount(2)
-    await members.getByRole('checkbox', { name: 'Mira, the Brave', exact: true }).uncheck()
+    await expect(referenceChip(members, 'Mira, the Brave')).toBeVisible()
+    await expect(referenceChip(members, 'Örn')).toBeVisible()
+    await removeReference(members, 'Mira, the Brave')
     await expect.poll(async () => (await h.rpc<{ fields: Record<string, string> }>('entities/get', ['guild', entry.id])).fields.Members)
       .toBe(JSON.stringify([second.id]))
   } finally {
@@ -154,7 +170,8 @@ test('guided custom entry creation edits multiline text and reference lists', as
     await expect(history).toHaveValue('Default\nhistory')
     await history.fill('A beginning.\nA second line.')
     await wizard.locator('.dialog-actions .primary').click()
-    await wizard.getByRole('checkbox', { name: 'Mira', exact: true }).check()
+    const members = wizard.getByRole('group', { name: 'Members', exact: true })
+    await addReference(members, 'Mira')
     await wizard.locator('.dialog-actions .primary').click()
     await expect(wizard).toHaveCount(0)
     const entries = await h.rpc<{ id: string }[]>('entities/list', ['guild'])
@@ -184,8 +201,8 @@ test('reference-list defaults use their custom target type and unavailable entri
     await field.locator('select').first().selectOption('EntityRefList')
     await field.locator('select').nth(1).selectOption('realm')
     const defaults = field.getByRole('group')
-    await expect(defaults.getByRole('checkbox')).toHaveCount(1)
-    await defaults.getByRole('checkbox', { name: 'North, Reach' }).check()
+    await addReference(defaults, 'North, Reach')
+    await expect(referenceChip(defaults, 'North, Reach')).toBeVisible()
     await manager.locator('.dialog-actions .primary').click()
     await expect(manager.locator('.type-manager-field')).toHaveCount(0)
     await manager.locator('.type-manager-title-row button').click()
@@ -196,14 +213,14 @@ test('reference-list defaults use their custom target type and unavailable entri
     }, entry.id)
     await selectEntry()
     const choices = h.page.getByRole('group', { name: 'Realms', exact: true })
-    await expect(choices.getByRole('checkbox', { name: 'North, Reach' })).toBeChecked()
+    await expect(referenceChip(choices, 'North, Reach')).toBeVisible()
     await h.rpc('entities/delete', ['realm', realm.id, false])
     await h.page.evaluate(() => window.novalistStores.codex.getState().setType('character'))
     await expect(choices).toHaveCount(0)
     await selectEntry()
-    await expect(choices).toHaveText('Unavailable entry')
-    await choices.getByRole('checkbox', { name: 'Unavailable entry' }).click()
-    await expect(choices.getByRole('checkbox')).toHaveCount(0)
+    await expect(referenceChip(choices, 'Unavailable entry')).toBeVisible()
+    await removeReference(choices, 'Unavailable entry')
+    await expect(choices.locator('.entity-chip')).toHaveCount(0)
     await expect.poll(async () => (await h.rpc<{ fields: Record<string, string> }>('entities/get', ['guild', entry.id])).fields.Realms).toBe('[]')
   } finally {
     await h.close()

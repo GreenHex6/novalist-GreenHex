@@ -21,6 +21,10 @@ could encounter in a previously released version.
 
 ## [Unreleased]
 
+### Changed
+
+- Codex **Reference list** fields use searchable chips instead of a checkbox list: type to find entries of the configured type, add with Enter or a list pick, remove a chip to unlink, and optionally paste bracketed names such as `[North, Reach], [Gaspard]`. Links still store entry IDs, so renames and names with commas stay stable.
+
 - Added full Arabic (RTL) support, localization, and keyboard shortcut fixes. (by @Ammar-Banna)
 
 ---

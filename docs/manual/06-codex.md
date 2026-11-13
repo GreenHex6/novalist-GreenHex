@@ -118,7 +118,7 @@ A place cannot be dropped **inside its own subtree** — into a child, a grandch
 This is what a project with two settings needs: without it, two worlds are two unrelated piles of places and nothing says which is which.
   - **Items** have name, type, origin, and description.
   - **Lore** has name, a **category** dropdown (Organization, Culture, History, Other), and description.
-  - **Custom types** render the typed fields you declared for them: a text box for String, a plain text area for Multiline text, a number box for Int, a date picker for Date, a dropdown for Bool and Enum, a picker for EntityRef, and checkboxes for a Reference list.
+  - **Custom types** render the typed fields you declared for them: a text box for String, a plain text area for Multiline text, a number box for Int, a date picker for Date, a dropdown for Bool and Enum, a picker for EntityRef, and a typeahead chip list for a Reference list.
 - **Images** — the entity's image strip. **From gallery** picks an existing project image; for a shared World Bible entry, the picker includes images from every book and the World Bible, so portraits can be reused without importing another copy. **Import file** copies a new file into the project; **Paste from clipboard** pastes a copied image; **From URL** downloads an image from a web address. Each image has an editable **name**, a **swap** button (replace it with another gallery image), and a remove button. The first image is the thumbnail used in the list and in the editor's hover cards.
 - **Custom properties** — typed key-value pairs. Each renders with a type-aware control: checkbox for Bool, number input for Int, date picker for Date, dropdown for Enum, text for String. Types and defaults come from the entity's template or type definition; you can also add ad-hoc properties and delete any of them.
 - **Chapter overrides** (characters only) — see below.
@@ -301,7 +301,7 @@ The new type appears as a tab in the Codex, gets its own folder in the book, can
 
 The type editor wraps its field controls to keep them readable. Drag its bottom-right corner to resize it; long forms scroll inside the window.
 
-**Multiline text** preserves line breaks as plain text. **Reference list** lets you check several entries of the selected type and uncheck them to remove a reference. Both support defaults and guided creation. Reference lists keep their links after an entry is renamed, including names with commas. Wiki articles and focus previews show the linked entries by name. A deleted or unavailable target remains removable from the list as **Unavailable entry**.
+**Multiline text** preserves line breaks as plain text. **Reference list** lets you type to search entries of the selected type and add them as chips (Enter or pick from the list); remove a chip to drop a reference. You can also paste a bracket list such as `[North, Reach], [Gaspard]` — commas inside brackets belong to the name. Both support defaults and guided creation. Reference lists keep their links after an entry is renamed, including names with commas. Wiki articles and focus previews show the linked entries by name. A deleted or unavailable target remains removable from the list as **Unavailable entry**.
 
 Extensions can also contribute entity types; those appear alongside user-defined ones but are managed by the extension, not the type manager. See [Extensions](24-extensions.md).
 
