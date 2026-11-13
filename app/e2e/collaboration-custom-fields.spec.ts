@@ -1,6 +1,15 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { join } from 'node:path'
 import { dismissTour, launchApp, seedBook, type Harness } from './harness'
+
+async function addReference(group: Locator, name: string): Promise<void> {
+  await group.getByRole('combobox').click()
+  await group.getByRole('option', { name, exact: true }).click()
+}
+
+function referenceChip(group: Locator, name: string): Locator {
+  return group.locator('.entity-chip', { hasText: name })
+}
 
 test('shared custom multiline and reference fields save through their focus leases', async () => {
   const apps: Harness[] = []
@@ -43,18 +52,18 @@ test('shared custom multiline and reference fields save through their focus leas
 
     const ownerMembers = owner.page.getByRole('group', { name: 'Members', exact: true })
     const guestMembers = guest.page.getByRole('group', { name: 'Members', exact: true })
-    const ownerFirst = ownerMembers.getByRole('checkbox', { name: 'Mira', exact: true })
-    const guestFirst = guestMembers.getByRole('checkbox', { name: 'Mira', exact: true })
-    await ownerFirst.focus()
-    await expect(ownerFirst).toHaveAttribute('aria-disabled', 'false')
-    await guestFirst.focus()
-    await expect(guestFirst).toHaveAttribute('aria-disabled', 'true')
-    await ownerFirst.check()
-    await ownerFirst.blur()
-    await expect(guestFirst).toHaveAttribute('aria-disabled', 'false')
-    await expect(guestFirst).toBeChecked()
-    await guestMembers.getByRole('checkbox', { name: 'Rowan', exact: true }).check()
-    await guestMembers.getByRole('checkbox', { name: 'Rowan', exact: true }).blur()
+    const ownerInput = ownerMembers.getByRole('combobox')
+    const guestInput = guestMembers.getByRole('combobox')
+    await ownerInput.focus()
+    await expect(ownerInput).toHaveAttribute('aria-disabled', 'false')
+    await guestInput.focus()
+    await expect(guestInput).toHaveAttribute('aria-disabled', 'true')
+    await addReference(ownerMembers, 'Mira')
+    await ownerInput.blur()
+    await expect(guestInput).toHaveAttribute('aria-disabled', 'false')
+    await expect(referenceChip(guestMembers, 'Mira')).toBeVisible()
+    await addReference(guestMembers, 'Rowan')
+    await guestInput.blur()
     for (const app of apps) {
       await expect.poll(async () => (await app.rpc<{ fields: Record<string, string> }>('entities/get', ['guild', guild.id])).fields)
         .toEqual({ History: 'First line.\nSecond line.', Members: JSON.stringify([first.id, second.id]) })

@@ -5,27 +5,88 @@
   padding: var(--nl-space-sm);
   border: var(--nl-rule-width) solid var(--nl-border);
   border-radius: var(--nl-radius-md);
-  max-height: var(--nl-panel-width-sm);
-  overflow: auto;
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
 }
 
-.entity-reference-list label {
+.entity-reference-list-chips {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: var(--nl-space-sm);
+  align-items: center;
   min-width: 0;
-  width: 100%;
-  overflow-wrap: break-word;
 }
 
-/* Keep the control native-sized even if a parent form rule stretches inputs. */
-.entity-reference-list input {
-  flex: none;
-  width: auto;
-  min-width: auto;
-  min-height: auto;
-  align-self: center;
+.entity-reference-list-empty {
+  color: var(--nl-text-subtle);
+  font-size: var(--nl-font-ui);
+}
+
+.entity-reference-list-combobox {
+  position: relative;
+  flex: 1 1 10rem;
+  min-width: 8rem;
+}
+
+.entity-reference-list-input {
+  font: inherit;
+  font-size: var(--nl-font-ui);
+  color: var(--nl-text);
+  background: transparent;
+  border: 1px dashed var(--nl-border);
+  border-radius: var(--nl-radius-pill);
+  padding: var(--nl-space-tightest) var(--nl-space-md);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.entity-reference-list-input:focus {
+  outline: none;
+  border-color: var(--nl-accent);
+  border-style: solid;
+}
+
+.entity-reference-list-suggestions {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + var(--nl-space-tightest));
+  margin: 0;
+  padding: var(--nl-space-tighter);
+  list-style: none;
+  max-height: 12rem;
+  overflow: auto;
+  background: var(--nl-surface-card);
+  border: var(--nl-rule-width) solid var(--nl-border);
+  border-radius: var(--nl-radius-md);
+  box-shadow: var(--nl-elevation-md);
+}
+
+.entity-reference-list-suggestions button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--nl-space-tightest) var(--nl-space-sm);
+  border: 0;
+  border-radius: var(--nl-radius-sm);
+  background: transparent;
+  color: var(--nl-text);
+  font: inherit;
+  font-size: var(--nl-font-ui);
+  cursor: pointer;
+}
+
+.entity-reference-list-suggestions button:hover,
+.entity-reference-list-suggestions button.active,
+.entity-reference-list-suggestions button[aria-selected='true'] {
+  background: var(--nl-surface-hover);
+}
+
+.entity-reference-list-hint {
+  margin: 0;
+  color: var(--nl-text-dim);
+  font-size: var(--nl-font-caption);
 }
